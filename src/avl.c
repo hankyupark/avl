@@ -337,9 +337,7 @@ avl_remove(avl_tree *tree, void *data , void *ctx)
         } 
         temp->balance = node->balance;
         up[n] = temp;
-        if (n != top-1) {
-            up[top - 1]->child[0] = child;
-        }
+        if (n != top-1) up[top - 1]->child[0] = child;
         delete = node;
     } else {
         node->data[0] = temp->data[0];
