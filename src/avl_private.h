@@ -23,7 +23,7 @@
 /*
  * AVL_MAX_HEIGHT: Max height of an avl tree 
  */
-#define AVL_MAX_HEIGHT 64 
+#define AVL_MAX_HEIGHT 48 
 
 
 /*
