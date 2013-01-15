@@ -44,22 +44,14 @@ void
 avl_dump(avl_tree *tree, avl_node *node, int level)
 {
     char space[1024];
-    
     memset(space, ' ', 1024);
-
     space[level*4] = 0;  
 
     if (node == NULL) return;
 
-
-    //printf("%sL:\n", space);
-
     avl_dump(tree, node->child[1], level+1);
 
     printf("%s[%d]\n", space, ((intr*)AVL_DATA(node, tree))->data);
-
-
-    //printf("%sR:\n", space);
 
     avl_dump(tree, node->child[0], level+1);
 }
@@ -73,15 +65,12 @@ int main(int argc, char *argv[])
     struct timeval start, finish;
     int i, x;
 
-
-   
     printf("\nP-TREE:\n");
 
     for (i = 0; i < NNN; i++) ndata[i] = i;
     for (i = 0; i < MMM; i++) mdata[i] = i;
    
     ptree = avl_new(int_compare, NULL, 0);
-
 
     gettimeofday(&start, NULL);
     for (i = 0; i < MMM; i++) avl_insert(ptree, &mdata[i], NULL);
@@ -136,14 +125,11 @@ int main(int argc, char *argv[])
                                                                  (unsigned int)(finish.tv_usec - start.tv_usec)/1000); 
    
 
-    printf("\n-----------------\n");
-
     printf("\nI-TREE:\n");
-
 
     memset(nintr, 0, NNN * sizeof(intr));
     memset(mintr, 0, MMM * sizeof(intr));
-    for (i = 0; i < NNN; i++) nintr[i].data = 11;
+    for (i = 0; i < NNN; i++) nintr[i].data = i;
     for (i = 0; i < MMM; i++) mintr[i].data = i;
 
     itree = avl_new(intr_compare, NULL, AVL_TREE_INTRUSIVE);
