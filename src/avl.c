@@ -181,12 +181,9 @@ avl_walk_internal(avl_tree      *r,
 avl_tree *
 avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
 {
-    avl_tree *tree = (avl_tree *)malloc (sizeof(avl_tree));
+    avl_tree *tree = (avl_tree *)malloc(sizeof(avl_tree));
 
-    if (tree == NULL) {
-        return NULL;
-    }
-
+    if (tree == NULL) return NULL;
     tree->root = NULL;
     tree->comp = comp_fn;
     tree->free = free_fn;
@@ -234,11 +231,7 @@ avl_lookup(avl_tree *tree, void *data, void *ctx)
 
     while ( node != NULL ) {
         comp = tree->comp( AVL_DATA(node, tree), data, ctx );
-
-        if (comp == 0) {
-            break;
-        }
-
+        if (comp == 0) break;
         node = node->child[comp < 0];
     }
 
@@ -253,9 +246,7 @@ avl_node *
 avl_insert(avl_tree *tree, void *data , void *ctx)
 {
     avl_node  head = {0}; 
-    avl_node *s, *t;
-    avl_node *p, *q;
-    avl_node *r;
+    avl_node *s, *t, *p, *q, *r;
     int dir;
 
     if (tree->root == NULL) { 
@@ -264,51 +255,37 @@ avl_insert(avl_tree *tree, void *data , void *ctx)
             r = tree->root;
         } else { 
             tree->root = avl_new_node ( tree, data );
-            if (tree->root == NULL) {
-                return NULL;
-            }
+            if (tree->root == NULL) return NULL;    
         }
-
         goto done;
     } 
-
     t = &head;
     t->child[1] = tree->root;
-
     for (s = p = t->child[1]; ; p = q) {
         dir = tree->comp(AVL_DATA(p, tree), data, ctx) < 0;
         q = p->child[dir];
-
         if (q == NULL) break;
-        
         if (q->balance != 0) {
             t = p; s = q;
         }
     }
-
     if (tree->opts & AVL_INTR) {
         q = (avl_node *) data; 
     } else {
         q = avl_new_node(tree, data);
     }
-
     r = q;
     p->child[dir] = q;
-
     if (q == NULL) return NULL;
-    
     for (p = s; p != q; p = p->child[dir]) {
         dir = tree->comp(AVL_DATA(p, tree), data , ctx) < 0;
         p->balance += dir == 0 ? -1 : +1;
     }
-
     q = s; 
-
     if (abs ( s->balance ) > 1) {
         dir = tree->comp (AVL_DATA(s, tree), data, ctx ) < 0;
         avl_insert_balance ( s, dir );
     }
-
     if (q == head.child[1]) {
         tree->root = s;
     } else {
@@ -318,7 +295,6 @@ avl_insert(avl_tree *tree, void *data , void *ctx)
 done:
 
     ++tree->size;
-
     return r;
 }
 
@@ -427,7 +403,7 @@ rebalance:
 int
 avl_size(avl_tree *tree)
 {
-  return tree->size;
+    return tree->size;
 }
 
 
@@ -437,24 +413,12 @@ avl_size(avl_tree *tree)
 static int
 avl_height_r(avl_node *node)
 {
-    int left_height = 0;
-    int right_height = 0;
-    int max_height;
+    int left_height = 0, right_height = 0, max_height;
    
-    if (node == NULL) {
-        return 0;
-    }
-
-    if (node->child[0] != NULL) {
-        left_height = avl_height_r(node->child[0]);
-    }
-
-    if (node->child[1] != NULL) {
-        right_height = avl_height_r(node->child[1]);
-    }
-    
+    if (node == NULL) return 0;
+    if (node->child[0] != NULL) left_height  = avl_height_r(node->child[0]);
+    if (node->child[1] != NULL) right_height = avl_height_r(node->child[1]);
     max_height = left_height >= right_height ? left_height : right_height;
-    
     return max_height + 1; 
 }
 
@@ -476,11 +440,9 @@ avl_height(avl_tree *tree)
 void *
 avl_data(avl_node *node)
 {
-    if (node != NULL) {
-        return (void*)node->data[0];
-    } else {
-        return NULL;
-    }
+    if (node != NULL) return (void*)node->data[0];
+    else return NULL;
+
 }
 
 
@@ -503,30 +465,15 @@ avl_validate(avl_tree *tree, avl_node *node, void *ctx)
     int valid = 1;
     avl_node *l, *r;
 
-    if (node == NULL) {
-        return valid;
-    }
+    if (node == NULL) return valid;
 
-    l = node->child[0];
+    l = node->child[0]; r = node->child[1];
 
-    if (l && valid) {
-        valid = (tree->comp(AVL_DATA(l, tree), AVL_DATA(node, tree), ctx) <= 0);
-    }
-     
-    r = node->child[1];
+    if (l && valid) valid = (tree->comp(AVL_DATA(l, tree), AVL_DATA(node, tree), ctx) <= 0);
+    if (r && valid) valid = (tree->comp(AVL_DATA(r, tree), AVL_DATA(node, tree), ctx) >= 0);
+    if (valid) valid = avl_validate(tree, l, ctx);
+    if (valid) valid = avl_validate(tree, r, ctx);
 
-    if (r && valid) {
-        valid = (tree->comp(AVL_DATA(r, tree), AVL_DATA(node, tree), ctx) >= 0);
-    }
-
-    if (valid) {
-        valid = avl_validate(tree, l, ctx);
-    }
- 
-    if (valid) {
-        valid = avl_validate(tree, r, ctx);
-    }
-        
     return valid;
 }
 
