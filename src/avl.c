@@ -118,11 +118,7 @@ avl_new_node(avl_tree *tree, void *data)
     size_t    size = sizeof(avl_node) + sizeof(void*);
 
     node = (avl_node *) malloc(size);
-
-    if (node == NULL) {
-        return NULL;
-    }
-
+    if (node == NULL) return NULL;
     node->balance = 0;
     node->data[0] = data;
     node->child[0] = node->child[1] = NULL;
@@ -137,16 +133,10 @@ avl_new_node(avl_tree *tree, void *data)
  * TODO: finish this function
  */
 static int
-avl_walk_internal(avl_tree      *r,
-                  avl_node      *n,
-                  avl_walker_fn  w,
-                  void          *c,
-                  int            t)
+avl_walk_internal(avl_tree *r, avl_node *n, avl_walker_fn w, void *c, int t)
 {
-    if (n == NULL) {
-        return AVL_SUCCESS;
-    }
-
+    if (n == NULL) return AVL_SUCCESS;
+   
     switch (t) {
     case AVL_WALK_INORDER:
         if (!avl_walk_internal(r, n->child[0], w, c, t)) return AVL_ERROR;
@@ -175,9 +165,6 @@ avl_walk_internal(avl_tree      *r,
 }
 
 
-/*
- * Create new avl tree
- */
 avl_tree *
 avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
 {
@@ -194,20 +181,15 @@ avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
 }
 
 
-/*
- * Free an avl tree
- */
 void 
 avl_free(avl_tree *tree)
 {
-    avl_node *node = tree->root;
-    avl_node *temp;
+    avl_node *node = tree->root, *temp;
 
     while ( node != NULL ) {
         if (node->child[0] == NULL) {
             temp = node->child[1];
             avl_free_node(node, tree);
-
         } else {
             temp = node->child[0];
             node->child[0] = temp->child[1];
@@ -220,9 +202,6 @@ avl_free(avl_tree *tree)
 }
 
 
-/*
- * Lookup an avl_node/user data in an avl tree
- */
 avl_node *
 avl_lookup(avl_tree *tree, void *data, void *ctx)
 {
@@ -239,9 +218,6 @@ avl_lookup(avl_tree *tree, void *data, void *ctx)
 }
 
 
-/*
- * Insert an avl_node/user data in an avl tree
- */
 avl_node * 
 avl_insert(avl_tree *tree, void *data , void *ctx)
 {
@@ -299,9 +275,6 @@ done:
 }
 
 
-/*
- * Remove a node from an avl tree
- */
 int 
 avl_remove(avl_tree *tree, void *data , void *ctx)
 {
@@ -309,7 +282,7 @@ avl_remove(avl_tree *tree, void *data , void *ctx)
     int upd[AVL_MAX_HEIGHT], top = 0, n = 0, done = 0;
 
     if (tree->root == NULL) return AVL_ERROR;
-  
+
     node = tree->root;
     while (1) {
         if ( node == NULL ) {
@@ -390,16 +363,11 @@ rebalance:
             }
         }
     }
-
     --tree->size;
-
     return AVL_SUCCESS;
 }
 
 
-/*
- * Get the size of the avl tree
- */
 int
 avl_size(avl_tree *tree)
 {
@@ -407,9 +375,6 @@ avl_size(avl_tree *tree)
 }
 
 
-/*
- * Recursively calculate the height of an avl node
- */
 static int
 avl_height_r(avl_node *node)
 {
@@ -423,9 +388,6 @@ avl_height_r(avl_node *node)
 }
 
 
-/*
- * Calculate the height of the avl tree
- */
 int
 avl_height(avl_tree *tree)
 {
@@ -433,10 +395,6 @@ avl_height(avl_tree *tree)
 }
 
 
-/*
- * Get the user data from an avl node.  Should only be called for non-intrusive
- * avl nodes (nodes that have user data hanging off them).
- */
 void *
 avl_data(avl_node *node)
 {
@@ -446,9 +404,6 @@ avl_data(avl_node *node)
 }
 
 
-/*
- * Walk an avl tree, calling a walker function on each node.
- */
 int
 avl_walk(avl_tree *tree, avl_walker_fn walk, void *ctx, int type)
 {
@@ -456,9 +411,6 @@ avl_walk(avl_tree *tree, avl_walker_fn walk, void *ctx, int type)
 }
 
 
-/*
- * Validate an avl subtree
- */
 int 
 avl_validate(avl_tree *tree, avl_node *node, void *ctx)
 { 
