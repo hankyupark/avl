@@ -253,5 +253,12 @@ int
 avl_walk(avl_tree *tree, avl_walker_fn walk, void *ctx, int type);
 
 
+/*
+ *
+ */
+int
+avl_validate(avl_tree *tree, avl_node *node, void *ctx);
+
+
 #endif /* _AVL_TREE_H_ */
 
