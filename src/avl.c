@@ -197,7 +197,6 @@ avl_free(avl_tree *tree)
         }
         node = temp;
     }
-
     free(tree);
 }
 
@@ -235,6 +234,7 @@ avl_insert(avl_tree *tree, void *data , void *ctx)
         }
         goto done;
     } 
+    
     t = &head;
     t->child[1] = tree->root;
     for (s = p = t->child[1]; ; p = q) {
@@ -338,7 +338,7 @@ avl_remove(avl_tree *tree, void *data , void *ctx)
         temp->balance = node->balance;
         up[n] = temp;
         if (n != top-1) {
-            up[top - 1]->child[up[top - 1] == node] = child;
+            up[top - 1]->child[0] = child;
         }
         delete = node;
     } else {
