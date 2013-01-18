@@ -270,7 +270,7 @@ avl_insert(avl_tree *tree, void *data , void *ctx)
  
 done:
 
-    ++tree->size;
+    tree->size++;
     return r;
 }
 
@@ -361,7 +361,7 @@ rebalance:
             }
         }
     }
-    --tree->size;
+    tree->size--;
     return AVL_SUCCESS;
 }
 
