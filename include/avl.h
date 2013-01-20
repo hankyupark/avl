@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
- * avl.h - AVL tree implementation. 
+ * avl.h - AVL tree implementation. No duplicate values allowed 
  *
- * Forhad Ahmed, June 2009
+ * Forhad Ahmed, January 2013
  *-----------------------------------------------------------------------------
  */
 
@@ -9,29 +9,28 @@
 #define _AVL_TREE_H_
 
 
+#define AVL_LEFT   0
+#define AVL_RIGHT  1
+#define AVL_NONE  -1
+ 
+
 /*
- * struct avl_node_t - Avl node type.  If an avl tree is intrusive, this must
+ * struct avl_node_t - AVL node type.  If an avl tree is intrusive, this must
  * be the first element in the user data type, and for this reason, we have to 
  * make this type transparent.
- * 
- *     Element: int balance
- *              Node balance factor
- * 
- *     Element: avl_node *child[2]
- *              Left (0) and right (1) pointers
- * 
- *     Element: void *data[0]
- *              Variable length array to contain either user data pointer if 
- *              tree is non-intrusive OR nothing (zero sized array) if tree
- *              is intrusive.
  */
 typedef struct avl_node_t avl_node;
-
 struct avl_node_t {
-    int       balance;   
-    avl_node *child[2];
-    void     *data[0];  
+   avl_node *child[2];
+   int       balance:2;
+   void     *data[0];
 };
+ 
+
+/*
+ * Initializer for intrusive nodes
+ */
+extern const avl_node AVL_INODE;
 
 
 /*
@@ -162,7 +161,7 @@ avl_free(avl_tree *tree);
  *     Argument: void *ctx
  *          IN   Context used for compare operations during insert
  */
-avl_node *
+int
 avl_insert(avl_tree *tree, void *data, void *ctx);
 
 

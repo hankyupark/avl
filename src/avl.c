@@ -1,116 +1,8 @@
-/*-----------------------------------------------------------------------------
- * avl.c - avl tree implementation 
- * 
- * Forhad Ahmed, June 2009
- *-----------------------------------------------------------------------------
- */
-
 #include <stdlib.h>
-#include <assert.h>
 #include "avl_private.h"
 
+const avl_node AVL_INODE = {{0,0},-1};
 
-/*
- * Two way single rotation 
- */
-#define avl_single(root, dir) do {                     \
-    avl_node *save = root->child[!dir];                \
-    root->child[!dir] = save->child[dir];              \
-    save->child[dir] = root;                           \
-    root = save;                                       \
-} while (0)
-
-
-/*
- * Two way double rotation 
- */
-#define avl_double(root, dir) do {                     \
-    avl_node *save = root->child[!dir]->child[dir];    \
-    root->child[!dir]->child[dir] = save->child[!dir]; \
-    save->child[!dir] = root->child[!dir];             \
-    root->child[!dir] = save;                          \
-    save = root->child[!dir];                          \
-    root->child[!dir] = save->child[dir];              \
-    save->child[dir] = root;                           \
-    root = save;                                       \
-} while (0)
-
-
-/*
- * Adjust balance before double rotation 
- */
-#define avl_adjust_balance(root, dir, bal) do {        \
-    avl_node *n = root->child[dir];                    \
-    avl_node *nn = n->child[!dir];                     \
-    if ( nn->balance == 0 )                            \
-        root->balance = n->balance = 0;                \
-    else if ( nn->balance == bal ) {                   \
-        root->balance = -bal;                          \
-        n->balance = 0;                                \
-    } else {                                           \
-        root->balance = 0;                             \
-        n->balance = bal;                              \
-    }                                                  \
-    nn->balance = 0;                                   \
-} while (0)
-
-
-/*
- * Rebalance after insertion 
- */
-#define avl_insert_balance(root, dir) do {             \
-    avl_node *n = root->child[dir];                    \
-    int bal = dir == 0 ? -1 : +1;                      \
-    if ( n->balance == bal ) {                         \
-        root->balance = n->balance = 0;                \
-        avl_single ( root, !dir );                     \
-    } else {                                           \
-        avl_adjust_balance ( root, dir, bal );         \
-        avl_double ( root, !dir );                     \
-    }                                                  \
-} while (0)
-
-
-/* 
- * Rebalance after deletion 
- */
-#define avl_remove_balance(root, dir, done) do {       \
-    avl_node *n = root->child[!dir];                   \
-    int bal = dir == 0 ? -1 : +1;                      \
-    if ( n->balance == -bal ) {                        \
-        root->balance = n->balance = 0;                \
-        avl_single ( root, dir );                      \
-    }                                                  \
-    else if ( n->balance == bal ) {                    \
-        avl_adjust_balance ( root, !dir, -bal );       \
-        avl_double ( root, dir );                      \
-    } else {                                           \
-        root->balance = -bal;                          \
-        n->balance = bal;                              \
-        avl_single ( root, dir );                      \
-        done = 1;                                      \
-    }                                                  \
-} while (0)
-
-
-/*
- * Macro to free node AND node data if required
- */
-#define avl_free_node(node, tree) do {                 \
-    if (tree->opts  & AVL_INTR) {                      \
-        if (tree->free) tree->free(node);              \
-    } else {                                           \
-        if (tree->free) {                              \
-            tree->free(AVL_DATA(node, tree));          \
-        }                                              \
-        free(node);                                    \
-    }                                                  \
-} while (0) 
-
-
-/*
- * Create new avl node for insertion if tree is non-intrusive
- */
 static avl_node *
 avl_new_node(avl_tree *tree, void *data)
 {
@@ -118,42 +10,173 @@ avl_new_node(avl_tree *tree, void *data)
     size_t    size = sizeof(avl_node) + sizeof(void*);
 
     node = (avl_node *) malloc(size);
+
     if (node == NULL) return NULL;
-    node->balance = 0;
+    
+    node->balance = AVL_NONE;
     node->data[0] = data;
     node->child[0] = node->child[1] = NULL;
 
     return node;
 }
 
-
-/*
- * avl_walk_internal() - Recursively walks the avl tree
- *
- * TODO: finish this function
- */
-static int
-avl_walk_internal(avl_tree *r, avl_node *n, avl_walker_fn w, void *c, int t)
+static inline void
+avl_free_node(avl_tree *tree, avl_node *node)
 {
-    if (n == NULL) return AVL_SUCCESS;
-   
+    if (tree->opts & AVL_INTR) {
+        if (tree->free) tree->free(node);
+    } else {
+        if (tree->free) tree->free(AVL_DATA(node, tree));
+        free(node);
+    }
+}
+
+static avl_node *
+avl_rotate_2(avl_node **top, int dir)
+{
+	avl_node *B, *C, *D, *E;
+	B = *top;
+	D = B->child[dir];
+	C = D->child[1-dir];
+	E = D->child[dir];
+
+	*top = D;
+	D->child[1-dir] = B;
+	B->child[dir] = C;
+	B->balance = AVL_NONE;
+	D->balance = AVL_NONE;
+	return E;
+}
+
+static avl_node *
+avl_rotate_3(avl_node **top, int dir, int third)
+{
+	avl_node *B, *F, *D, *C, *E;
+	B = *top;
+	F = B->child[dir];
+	D = F->child[1-dir];
+	C = D->child[1-dir];
+	E = D->child[dir];
+	*top = D;
+	D->child[1-dir] = B;
+	D->child[dir] = F;
+	B->child[dir] = C;
+	F->child[1-dir] = E;
+	D->balance = AVL_NONE;
+	B->balance = F->balance = AVL_NONE;
+
+	if (third == AVL_NONE)
+		return NULL;
+	else if (third == dir) {
+		B->balance = 1-dir;
+		return E;
+	} else {
+		F->balance = dir;
+		return C;
+	}
+}
+ 
+static inline void 
+avl_rebalance_path(avl_tree *tree, avl_node *node, void *data, void *ctx)
+{
+	while (node && tree->comp(data, AVL_DATA(node, tree), ctx)) {
+		int step = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0);
+		node->balance = step;
+		node = node->child[step];
+	}
+}
+
+static inline void 
+avl_rebalance_insert(avl_tree *tree, avl_node **top, void *data, void *ctx)
+{
+	avl_node *node = *top;
+	int first, second, third;
+	if (AVL_BALANCED(node));
+	else if (node->balance != (first = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0))) {
+		node->balance = AVL_NONE;
+		node = node->child[first]; 
+	} else if (first == (second = (tree->comp(data, AVL_DATA(node->child[first], tree), ctx) > 0))) {
+		node = avl_rotate_2(top, first);
+	} else {
+		node = node->child[first]->child[second];
+		if (tree->comp(data, AVL_DATA(node, tree), ctx) == 0) third = AVL_NONE;
+		else third = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0);
+		node = avl_rotate_3(top, first, third);
+	}
+	avl_rebalance_path(tree, node, data, ctx);
+}
+
+static inline void 
+avl_swap_del(avl_tree *tree, avl_node **ptarget, avl_node **proot, int dir)
+{
+	avl_node *target = *ptarget;
+	avl_node *node = *proot;
+
+	*ptarget = node;
+	*proot = node->child[1-dir];
+	node->child[AVL_LEFT] = target->child[AVL_LEFT];
+	node->child[AVL_RIGHT]= target->child[AVL_RIGHT];
+	node->balance = target->balance;
+	avl_free_node(tree, target);
+}
+
+static inline avl_node **
+avl_rebalance_del(avl_tree *tree, avl_node **top, avl_node **ptarget, void *data, void *ctx)
+{
+	avl_node *target = *ptarget;
+
+	while (1) {
+		avl_node *node = *top;
+		int dir = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0);
+		if (node->child[dir]==NULL) break;
+		if (AVL_BALANCED(node)) {
+			node->balance = 1-dir;
+		} else if (node->balance == dir) {
+			node->balance = AVL_NONE;
+		} else {
+			int second = node->child[1-dir]->balance;
+			if (second == dir) {
+				avl_rotate_3(top, 1-dir, node->child[1-dir]->child[dir]->balance);
+			} else if (second == AVL_NONE) {
+				avl_rotate_2(top, 1-dir);
+				node->balance = 1-dir;
+				(*top)->balance = dir;
+			} else {
+				avl_rotate_2(top, 1-dir);
+            }
+			if (node == target) {
+				ptarget = &(*top)->child[dir];
+            }
+		}
+		top = &node->child[dir];
+	}
+	return ptarget;
+}
+ 
+static int
+avl_walk_r(avl_tree *r, avl_node *n, avl_walker_fn w, void *c, int t)
+{
+    if (n == NULL) {
+        return AVL_SUCCESS;
+    }
+
     switch (t) {
     case AVL_WALK_INORDER:
-        if (!avl_walk_internal(r, n->child[0], w, c, t)) return AVL_ERROR;
+        if (!avl_walk_r(r, n->child[0], w, c, t)) return AVL_ERROR;
         if (!w(AVL_DATA(n, r), c)) return AVL_ERROR;
-        if (!avl_walk_internal(r, n->child[1], w, c, t)) return AVL_ERROR;
+        if (!avl_walk_r(r, n->child[1], w, c, t)) return AVL_ERROR;
         return AVL_SUCCESS;
         break;
 
     case AVL_WALK_PREORDER:
         if (!w(AVL_DATA(n, r), c)) return AVL_ERROR;
-        if (!avl_walk_internal(r, n->child[0], w, c, t)) return AVL_ERROR;
-        if (!avl_walk_internal(r, n->child[1], w, c, t)) return AVL_ERROR;
+        if (!avl_walk_r(r, n->child[0], w, c, t)) return AVL_ERROR;
+        if (!avl_walk_r(r, n->child[1], w, c, t)) return AVL_ERROR;
         return AVL_SUCCESS;
         break;
 
     case AVL_WALK_POSTORDER:
-
+        // TODO
         return AVL_SUCCESS;
         break;
 
@@ -164,6 +187,17 @@ avl_walk_internal(avl_tree *r, avl_node *n, avl_walker_fn w, void *c, int t)
     return AVL_ERROR;;
 }
 
+static int
+avl_height_r(avl_node *node)
+{
+    int left_height = 0, right_height = 0,max_height;
+   
+    if (node == NULL) return 0;
+    if (node->child[0] != NULL) left_height = avl_height_r(node->child[0]);
+    if (node->child[1] != NULL) right_height = avl_height_r(node->child[1]);
+    max_height = left_height >= right_height ? left_height : right_height;
+    return max_height + 1; 
+}
 
 avl_tree *
 avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
@@ -171,6 +205,7 @@ avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
     avl_tree *tree = (avl_tree *)malloc(sizeof(avl_tree));
 
     if (tree == NULL) return NULL;
+  
     tree->root = NULL;
     tree->comp = comp_fn;
     tree->free = free_fn;
@@ -180,7 +215,6 @@ avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
     return tree;
 }
 
-
 void 
 avl_free(avl_tree *tree)
 {
@@ -189,7 +223,8 @@ avl_free(avl_tree *tree)
     while ( node != NULL ) {
         if (node->child[0] == NULL) {
             temp = node->child[1];
-            avl_free_node(node, tree);
+            avl_free_node(tree, node);
+
         } else {
             temp = node->child[0];
             node->child[0] = temp->child[1];
@@ -197,194 +232,87 @@ avl_free(avl_tree *tree)
         }
         node = temp;
     }
+
     free(tree);
 }
 
+void *
+avl_data(avl_node *node)
+{
+    if (node != NULL) return (void*)node->data[0];
+    else return NULL;
+}
 
 avl_node *
 avl_lookup(avl_tree *tree, void *data, void *ctx)
 {
     avl_node *node = tree->root;
-    int comp;
 
-    while ( node != NULL ) {
-        comp = tree->comp( AVL_DATA(node, tree), data, ctx );
-        if (comp == 0) break;
-        node = node->child[comp < 0];
-    }
-
-    return node;
+	while (node && tree->comp(data, AVL_DATA(node, tree), ctx)) {
+		int step = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0);
+		node = node->child[step];
+	}
+	return node;
 }
-
-
-avl_node * 
-avl_insert(avl_tree *tree, void *data , void *ctx)
-{
-    avl_node  head = {0}; 
-    avl_node *s, *t, *p, *q, *r;
-    int dir;
-
-    if (tree->root == NULL) { 
-        if (tree->opts & AVL_INTR) {
-            tree->root = data; 
-            r = tree->root;
-        } else { 
-            tree->root = avl_new_node ( tree, data );
-            if (tree->root == NULL) return NULL;    
-        }
-        goto done;
-    } 
-    
-    t = &head;
-    t->child[1] = tree->root;
-    for (s = p = t->child[1]; ; p = q) {
-        dir = tree->comp(AVL_DATA(p, tree), data, ctx) < 0;
-        q = p->child[dir];
-        if (q == NULL) break;
-        if (q->balance != 0) {
-            t = p; s = q;
-        }
-    }
-    if (tree->opts & AVL_INTR) {
-        q = (avl_node *) data; 
-    } else {
-        q = avl_new_node(tree, data);
-    }
-    r = q;
-    p->child[dir] = q;
-    if (q == NULL) return NULL;
-    for (p = s; p != q; p = p->child[dir]) {
-        dir = tree->comp(AVL_DATA(p, tree), data , ctx) < 0;
-        p->balance += dir == 0 ? -1 : +1;
-    }
-    q = s; 
-    if (abs ( s->balance ) > 1) {
-        dir = tree->comp (AVL_DATA(s, tree), data, ctx ) < 0;
-        avl_insert_balance ( s, dir );
-    }
-    if (q == head.child[1]) {
-        tree->root = s;
-    } else {
-        t->child[q == t->child[1]] = s;
-    }
- 
-done:
-
-    tree->size++;
-    return r;
-}
-
 
 int 
-avl_remove(avl_tree *tree, void *data , void *ctx)
+avl_insert(avl_tree *tree, void *data, void *ctx)
 {
-    avl_node *up[AVL_MAX_HEIGHT], *node = NULL, *parent = NULL, *delete, *child;
-    int upd[AVL_MAX_HEIGHT], top = 0, n = 0, done = 0;
+    avl_node **proot = &tree->root;
+	avl_node *node = *proot;
+	avl_node **top = proot;
+	while (node && tree->comp(data, AVL_DATA(node, tree), ctx)) {
+		int step = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0);
+		if (!AVL_BALANCED(node)) top = proot;
+		proot = &node->child[step];
+		node = *proot;
+	}
+	if (node) return 0;
 
-    if (tree->root == NULL) return AVL_ERROR;
-
-    node = tree->root;
-    while (1) {
-        if ( node == NULL ) {
-            return 0;
-        } else if ( tree->comp (AVL_DATA(node, tree), data, ctx) == 0 ) {
-            break;
-        }
-
-        upd[top] = tree->comp (AVL_DATA(node, tree), data, ctx ) < 0;
-        up[top++] = node;
-        node = node->child[upd[top - 1]];
-        parent = up[top-1];
-    }
-
-    if (node->child[0] == NULL || node->child[1] == NULL) {
-        int dir = node->child[0] == NULL;
-        if ( top != 0 ) {
-            up[top - 1]->child[upd[top - 1]] = node->child[dir];
-        } else {
-            tree->root = node->child[dir];
-        }
-        avl_free_node(node, tree);
-        goto rebalance;
-    } 
-       
-    avl_node *temp = node->child[1];
-    upd[top] = 1;
-    up[top] = node;      
-    n = top++;
-    while ( temp->child[0] != NULL ) {
-        upd[top] = 0;
-        up[top++] = temp;
-        temp = temp->child[0];
-    }
-    child = temp->child[1]; 
     if (tree->opts & AVL_INTR) {
-        if (parent) {
-            if (parent->child[0] == node) {
-                parent->child[0] = temp;
-            } else if (parent->child[1] == node) {
-                parent->child[1] = temp;
-            } else { 
-                assert(0);
-            }
-        } else {
-            tree->root = temp;
-        }
-               
-        temp->child[0] = node->child[0];
-        if (node->child[1] != temp) {
-            temp->child[1] = node->child[1]; 
-        } 
-        temp->balance = node->balance;
-        up[n] = temp;
-        if (n != top-1) up[top - 1]->child[0] = child;
-        delete = node;
+        node = (avl_node *) data;
     } else {
-        node->data[0] = temp->data[0];
-        up[top - 1]->child[up[top - 1] == node] = child;
-        delete = temp;
+        node = avl_new_node(tree, data);
     }
-    avl_free_node(delete, tree);
 
-rebalance:
-
-    while ( --top >= 0 && !done ) {
-        up[top]->balance += upd[top] != 0 ? -1 : +1;
-        if (abs ( up[top]->balance ) == 1) {
-            break;
-        } else if (abs ( up[top]->balance ) > 1) {
-            avl_remove_balance ( up[top], upd[top], done );
-            if ( top != 0 ) {
-                up[top - 1]->child[upd[top - 1]] = up[top];
-            } else {
-                tree->root = up[0];
-            }
-        }
-    }
-    tree->size--;
-    return AVL_SUCCESS;
+    *proot = node;
+    avl_rebalance_insert(tree, top, data, ctx);
+    tree->size++;
+    return 1;
 }
 
+int 
+avl_remove(avl_tree *tree, void *data, void *ctx)
+{
+    avl_node **proot = &tree->root;
+	avl_node  *node = *proot;
+	avl_node **top = proot;
+	avl_node **ptarget = NULL;
+	int dir;
+	
+	while (node) {
+		dir = (tree->comp(data, AVL_DATA(node, tree), ctx) > 0);
+		if (tree->comp(data, AVL_DATA(node, tree), ctx) == 0)
+			ptarget = proot;
+		if (node->child[dir] == NULL)
+			break;
+		if (AVL_BALANCED(node) || (node->balance == (1-dir) && AVL_BALANCED(node->child[1-dir]))) top = proot;
+		proot = &node->child[dir];
+		node = *proot;
+	}
+	if (!ptarget) return 0;
+
+	ptarget = avl_rebalance_del(tree, top, ptarget, data, ctx);
+	avl_swap_del(tree, ptarget, proot, dir);
+    tree->size--;
+	return 1;
+}
 
 int
-avl_size(avl_tree *tree)
+avl_walk(avl_tree *tree, avl_walker_fn walk, void *ctx, int type)
 {
-    return tree->size;
+    return avl_walk_r(tree, tree->root, walk, ctx, type);
 }
-
-
-static int
-avl_height_r(avl_node *node)
-{
-    int left_height = 0, right_height = 0, max_height;
-   
-    if (node == NULL) return 0;
-    if (node->child[0] != NULL) left_height  = avl_height_r(node->child[0]);
-    if (node->child[1] != NULL) right_height = avl_height_r(node->child[1]);
-    max_height = left_height >= right_height ? left_height : right_height;
-    return max_height + 1; 
-}
-
 
 int
 avl_height(avl_tree *tree)
@@ -392,38 +320,28 @@ avl_height(avl_tree *tree)
     return avl_height_r(tree->root);
 }
 
-
-void *
-avl_data(avl_node *node)
-{
-    if (node != NULL) return (void*)node->data[0];
-    else return NULL;
-
-}
-
-
 int
-avl_walk(avl_tree *tree, avl_walker_fn walk, void *ctx, int type)
+avl_size(avl_tree *tree)
 {
-    return avl_walk_internal(tree, tree->root, walk, ctx, type);
+    return tree->size;
 }
-
 
 int 
 avl_validate(avl_tree *tree, avl_node *node, void *ctx)
 { 
     int valid = 1;
-    avl_node *l, *r;
+    avl_node *left, *right;
 
     if (node == NULL) return valid;
+    
+    left = node->child[0];
+    right = node->child[1];
 
-    l = node->child[0]; r = node->child[1];
+    if (left && valid) valid = (tree->comp(AVL_DATA(left, tree), AVL_DATA(node, tree), ctx) < 0);   
+    if (right && valid) valid = (tree->comp(AVL_DATA(right, tree), AVL_DATA(node, tree), ctx) > 0);
 
-    if (l && valid) valid = (tree->comp(AVL_DATA(l, tree), AVL_DATA(node, tree), ctx) <= 0);
-    if (r && valid) valid = (tree->comp(AVL_DATA(r, tree), AVL_DATA(node, tree), ctx) >= 0);
-    if (valid) valid = avl_validate(tree, l, ctx);
-    if (valid) valid = avl_validate(tree, r, ctx);
+    if (valid) valid = avl_validate(tree, left, ctx);
+    if (valid) valid = avl_validate(tree, right, ctx);
 
     return valid;
 }
-
