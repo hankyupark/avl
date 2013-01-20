@@ -7,6 +7,10 @@
 # Clean all binaries   - build clean
 #
 
+GCC='gcc'
+OPT='-O3'
+DEB=''
+
 build_lib() 
 {
     rm -rf obj
@@ -26,7 +30,7 @@ build_lib()
         #
         # compile the files
         #
-        gcc -g -c $file -Iinclude -o $obj
+        $GCC $OPT $DEB -c $file -Iinclude -o $obj
     done
 }
 
@@ -42,7 +46,7 @@ build_test()
         # compile the files
         #
         bin=${file%.*}
-        gcc -g -o $bin $file -Iinclude obj/*
+        $GCC $OPT $DEB -o $bin $file -Iinclude obj/*
     done
 }
 
