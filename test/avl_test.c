@@ -7,8 +7,8 @@
 #include "avl.h"
 #include "../src/avl_private.h"
 
-#define NNN 1000000
-#define MMM 1000000
+#define NNN 6000000
+#define MMM 6000000
 
 typedef struct intr {
     avl_node avl;
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 
     gettimeofday(&start, NULL);
     for (i = 0; i < MMM; i++) avl_insert(ptree, &mdata[i], NULL);
-    for (i = NNN; i > 0; i--) avl_insert(ptree, &ndata[i], NULL); 
+    //for (i = NNN; i > 0; i--) avl_insert(ptree, &ndata[i], NULL); 
     gettimeofday(&finish, NULL);
     printf("INSERT: n = %7d h = %2d v = %d (%d sec %u msec)\n", avl_size(ptree), 
                                                                 avl_height(ptree), 
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 
     gettimeofday(&start, NULL);
     for (i = 0; i < MMM; i++) avl_insert(itree, &mintr[i], NULL);
-    for (i = NNN - 1; i >= 0; i--) avl_insert(itree, &nintr[i], NULL); 
+    //for (i = NNN - 1; i >= 0; i--) avl_insert(itree, &nintr[i], NULL); 
     gettimeofday(&finish, NULL);
     printf("INSERT: n = %7d h = %2d v = %d (%d sec %u msec)\n", avl_size(itree), 
                                                                 avl_height(itree),
