@@ -10,6 +10,53 @@
 
 
 /*
+ * avl_compare_fn() - Comparison function template for comparing two avl nodes.
+ * If the avl nodes are intrusive, then the data pointers are avl_node types; 
+ * otherwise, they are the data fields contained within avl_node type. Same is
+ * true for all other avl api's that pass a void * for data.
+ *    
+ *     Argument: void *a
+ *          IN   Data to compare
+ *   
+ *     Argument: void *b
+ *          IN   Data to compare
+ * 
+ *     Argument: void *ctx
+ *          IN   Context used for comparison 
+ *
+ *       Return: int
+ *               1 if a > b, -1 if a < b, 0 if a == b.
+ */
+typedef int (*avl_compare_fn) (void *a, void *b, void *ctx);
+
+
+/*
+ * avl_free_fn() - Free function called for every avl node when the tree is 
+ * being destroyed.
+ * 
+ *     Argument: void *n
+ *          IN   Avl node or user data to free
+ */
+typedef void (*avl_free_fn) (void *n);
+
+
+/*
+ * avl_walker_fn() - Walker function template for walking an avl tree.
+ * 
+ *     Argument: void *n
+ *          IN   Avl node or user data in an avl tree
+ * 
+ *     Argument: void *ctx
+ *          IN   Context used for the walker function
+ *
+ *       Return: int
+ *               On success, AVL_SUCCESS == 1
+ *               On failure, AVL_ERROR
+ */
+typedef int (*avl_walker_fn) (void *n, void *ctx);
+
+
+/*
  * struct avl_node_t - Avl node type.  If an avl tree is intrusive, this must
  * be the first element in the user data type, and for this reason, we have to 
  * make this type transparent.
@@ -35,6 +82,38 @@ struct avl_node_t {
 
 
 /*
+ * struct avl_tree_t - Avl tree type.  
+ * 
+ *     Element: AVL_NODE *root
+ *              Avl root node
+ * 
+ *     Element: AVL_COMP comp
+ *              Avl compare function
+ * 
+ *     Element: AVL_FREE free_fn
+ *              Avl node free function
+ * 
+ *     Element: int size
+ *              Avl tree size
+ * 
+ *     Element: int opts
+ *              Avl tree options 
+ *
+ *     Element: int indx
+ *              Avl tree index (for multi-trees)
+ */
+struct avl_tree_t {
+    avl_node *root;
+    avl_compare_fn comp;
+    avl_free_fn free;
+    int size;
+    int opts;
+    int idx;
+    int n;
+};
+
+
+/*
  * Opaque type for an avl tree.
  */
 typedef struct avl_tree_t avl_tree;
@@ -51,53 +130,6 @@ typedef struct avl_tree_t avl_tree;
  */
 #define AVL_TREE_DEFAULT   0x00000000 
 #define AVL_TREE_INTRUSIVE 0x00000001
-
-
-/*
- * avl_compare_fn() - Comparison function template for comparing two avl nodes.
- * If the avl nodes are intrusive, then the data pointers are avl_node types; 
- * otherwise, they are the data fields contained within avl_node type. Same is
- * true for all other avl api's that pass a void * for data.
- *    
- *     Argument: void *a
- *          IN   Data to compare
- *   
- *     Argument: void *b
- *          IN   Data to compare
- * 
- *     Argument: void *ctx
- *          IN   Context used for comparison 
- *
- *       Return: int
- *               1 if a > b, -1 if a < b, 0 if a == b.
- */
-typedef int (*avl_compare_fn) (void *a, void *b, void *ctx);
-
-
-/*
- * avl_walker_fn() - Walker function template for walking an avl tree.
- * 
- *     Argument: void *n
- *          IN   Avl node or user data in an avl tree
- * 
- *     Argument: void *ctx
- *          IN   Context used for the walker function
- *
- *       Return: int
- *               On success, AVL_SUCCESS == 1
- *               On failure, AVL_ERROR
- */
-typedef int (*avl_walker_fn) (void *n, void *ctx);
-
-
-/*
- * avl_free_fn() - Free function called for every avl node when the tree is 
- * being destroyed.
- * 
- *     Argument: void *n
- *          IN   Avl node or user data to free
- */
-typedef void (*avl_free_fn) (void *n);
 
 
 /*

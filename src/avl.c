@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include "avl.h"
 #include "avl_private.h"
 
 
