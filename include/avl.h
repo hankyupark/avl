@@ -120,7 +120,7 @@ enum {
 
 
 /*
- * avl_new() - Create a new avl tree.  
+ * avl_init() - Create a new avl tree.  
  *     
  *     Argument: avl_compare_fn comp
  *          IN   Comparison function used for ins/del operations for this tree
@@ -137,7 +137,11 @@ enum {
  *               memory error)
  */
 avl_tree *
-avl_new(avl_compare_fn comp, avl_free_fn free_fn, int options);
+avl_init(avl_compare_fn comp, avl_free_fn free_fn, int options);
+
+
+avl_tree *
+avl_multi_init(avl_compare_fn comp_fn[], avl_free_fn free_fn[], int n, int opt);
 
 
 /*
@@ -166,6 +170,10 @@ avl_node *
 avl_insert(avl_tree *tree, void *data, void *ctx);
 
 
+avl_node *
+avl_multi_insert(avl_tree *mtree, void *data, void *ctx);
+
+
 /*
  * avl_remove() - remove an avl_node/user data from an avl tree.
  * 
@@ -180,6 +188,10 @@ avl_insert(avl_tree *tree, void *data, void *ctx);
  */
 int 
 avl_remove(avl_tree *tree, void *data, void *ctx);
+
+
+int
+avl_multi_remove(avl_tree *mtree, void *data, void *ctx);
 
 
 /*

@@ -97,15 +97,13 @@
  * Macro to free node AND node data if required
  */
 #define avl_free_node(node, tree) do {                 \
-    if (tree->opts  & AVL_INTR) {                      \
-        if (tree->free) tree->free(node);              \
-    } else {                                           \
-        if (tree->free) {                              \
-            tree->free(AVL_DATA(node, tree));          \
-        }                                              \
+    if (tree->free) {                                  \
+        tree->free(AVL_DATA(node, tree));              \
+    }                                                  \
+    if ((tree->opts & AVL_INTR) == 0) {                \
         free(node);                                    \
     }                                                  \
-} while (0) 
+} while (0)
 
 
 /*
@@ -166,19 +164,46 @@ avl_walk_internal(avl_tree *r, avl_node *n, avl_walker_fn w, void *c, int t)
 
 
 avl_tree *
-avl_new (avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
+avl_init(avl_compare_fn comp_fn, avl_free_fn free_fn, int options)
 {
-    avl_tree *tree = (avl_tree *)malloc(sizeof(avl_tree));
+    avl_tree *tree = (avl_tree *)calloc(1, sizeof(avl_tree));
 
     if (tree == NULL) return NULL;
+
     tree->root = NULL;
     tree->comp = comp_fn;
     tree->free = free_fn;
     tree->opts = options;
     tree->size = 0;
- 
+    tree->idx = 0;
+    tree->n = 1;
+    
     return tree;
 }
+
+
+avl_tree *
+avl_multi_init(avl_compare_fn comp_fn[], avl_free_fn free_fn[], int n, int opt)
+{
+    int index;
+    avl_tree *mtree = (avl_tree *)calloc(n, sizeof(avl_tree));
+
+    if (mtree == NULL) return NULL;
+
+    for (index = 0; index < n; index++) {
+        mtree[index].root = NULL;
+        if (comp_fn)
+        mtree[index].comp = comp_fn[index];
+        if (free_fn)
+        mtree[index].free = free_fn[index];
+        mtree[index].opts = AVL_TREE_INTRUSIVE | opt;
+        mtree[index].size = 0;
+        mtree[index].idx = index;
+        mtree[index].n = n;
+    }
+
+    return mtree;
+} 
 
 
 void 
@@ -208,7 +233,7 @@ avl_lookup(avl_tree *tree, void *data, void *ctx)
     int comp;
 
     while ( node != NULL ) {
-        comp = tree->comp( AVL_DATA(node, tree), data, ctx );
+        comp = tree->comp( AVL_DATA(node, tree), AVL_NODE(data, tree), ctx );
         if (comp == 0) break;
         node = node->child[comp < 0];
     }
@@ -238,7 +263,7 @@ avl_insert(avl_tree *tree, void *data , void *ctx)
     t = &head;
     t->child[1] = tree->root;
     for (s = p = t->child[1]; ; p = q) {
-        dir = tree->comp(AVL_DATA(p, tree), data, ctx) < 0;
+        dir = tree->comp(AVL_DATA(p, tree), AVL_NODE(data, tree), ctx) < 0;
         q = p->child[dir];
         if (q == NULL) break;
         if (q->balance != 0) {
@@ -254,12 +279,12 @@ avl_insert(avl_tree *tree, void *data , void *ctx)
     p->child[dir] = q;
     if (q == NULL) return NULL;
     for (p = s; p != q; p = p->child[dir]) {
-        dir = tree->comp(AVL_DATA(p, tree), data , ctx) < 0;
+        dir = tree->comp(AVL_DATA(p, tree), AVL_NODE(data, tree) , ctx) < 0;
         p->balance += dir == 0 ? -1 : +1;
     }
     q = s; 
     if (abs ( s->balance ) > 1) {
-        dir = tree->comp (AVL_DATA(s, tree), data, ctx ) < 0;
+        dir = tree->comp (AVL_DATA(s, tree), AVL_NODE(data, tree), ctx ) < 0;
         avl_insert_balance ( s, dir );
     }
     if (q == head.child[1]) {
@@ -275,6 +300,29 @@ done:
 }
 
 
+avl_node *
+avl_multi_insert(avl_tree *mtree, void *data, void *ctx)
+{
+    int index;
+    int size = mtree->n;
+    avl_tree *tree = NULL;
+    avl_node *node = NULL;
+    avl_node *temp = NULL;
+
+    for (index = 0; index < size; index++) {
+        tree = &mtree[index];
+        temp = avl_insert(tree, (tree->opts & AVL_INTR)?data+index*sizeof(avl_node):data, ctx);
+        if (node == NULL) node = temp;
+    }
+
+    for (index = 0; index < size - 1; index++) {
+        assert(avl_size(&mtree[index]) == avl_size(&mtree[index+1]));
+    }
+
+    return node;
+}
+
+
 int 
 avl_remove(avl_tree *tree, void *data , void *ctx)
 {
@@ -287,11 +335,11 @@ avl_remove(avl_tree *tree, void *data , void *ctx)
     while (1) {
         if ( node == NULL ) {
             return 0;
-        } else if ( tree->comp (AVL_DATA(node, tree), data, ctx) == 0 ) {
+        } else if ( tree->comp (AVL_DATA(node, tree), AVL_NODE(data, tree), ctx) == 0 ) {
             break;
         }
 
-        upd[top] = tree->comp (AVL_DATA(node, tree), data, ctx ) < 0;
+        upd[top] = tree->comp (AVL_DATA(node, tree), AVL_NODE(data, tree), ctx ) < 0;
         up[top++] = node;
         node = node->child[upd[top - 1]];
         parent = up[top-1];
@@ -363,6 +411,27 @@ rebalance:
     }
     tree->size--;
     return AVL_SUCCESS;
+}
+
+
+int
+avl_multi_remove(avl_tree *mtree, void *data, void *ctx)
+{
+    int index;
+    int size = mtree->n;
+    avl_tree *tree = NULL;
+    int rc;
+
+    for (index = 0; index < size; index++) {
+        tree = &mtree[index];
+        rc = avl_remove(tree, (tree->opts & AVL_INTR)?data+index*sizeof(avl_node):data, ctx);
+    }
+
+    for (index = 0; index < size - 1; index++) {
+        assert(avl_size(&mtree[index]) == avl_size(&mtree[index+1]));
+    }
+
+    return rc;
 }
 
 

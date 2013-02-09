@@ -14,7 +14,6 @@
 /*
  * Macros for source compaction
  */
-#define AVL_NODE struct avl_node_t
 #define AVL_COMP avl_compare_fn
 #define AVL_FREE avl_free_fn
 #define AVL_INTR AVL_TREE_INTRUSIVE
@@ -30,7 +29,8 @@
  * AVL_DATA: Macro to get the data pointer used for avl operations based on 
  *           whether the tree is intrusive or not
  */
-#define AVL_DATA(n, t) ((t->opts & AVL_INTR) ? (void *)n : (void*)n->data[0])
+#define AVL_DATA(n, t) ((t->opts & AVL_INTR) ? (void *)n-t->idx*sizeof(avl_node) : (void*)n->data[0])
+#define AVL_NODE(d, t) ((t->opts & AVL_INTR) ? (d-t->idx*sizeof(avl_node)) : d)
 
 
 /*
@@ -50,13 +50,18 @@
  * 
  *     Element: int opts
  *              Avl tree options 
+ *
+ *     Element: int indx
+ *              Avl tree index (for multi-trees)
  */
 struct avl_tree_t {
-    AVL_NODE *root;
+    avl_node *root;
     AVL_COMP  comp;
     AVL_FREE  free;
     int       size;
     int       opts;
+    int       idx;
+    int       n;
 };
 
 

@@ -8,8 +8,8 @@
 #
 
 GCC='gcc'
-OPT='-O3'
-DEB=''
+OPT=''
+DEB='-g'
 
 build_lib() 
 {
