@@ -247,7 +247,7 @@ avl_node *
 avl_insert(avl_tree *tree, void *data , void *ctx)
 {
     avl_node  head = {0}; 
-    avl_node *s, *t, *p, *q, *r;
+    avl_node *s, *t, *p, *q, *r = NULL;
     int dir;
 
     if (tree->root == NULL) { 
@@ -421,7 +421,7 @@ avl_multi_remove(avl_tree *mtree, void *data, void *ctx)
     int index;
     int size = mtree->n;
     avl_tree *tree = NULL;
-    int rc;
+    int rc = 0;
 
     for (index = 0; index < size; index++) {
         tree = &mtree[index];
