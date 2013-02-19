@@ -227,7 +227,7 @@ avl_free(avl_tree *tree)
 }
 
 
-avl_node *
+void *
 avl_lookup(avl_tree *tree, void *data, void *ctx)
 {
     avl_node *node = tree->root;
@@ -240,7 +240,27 @@ avl_lookup(avl_tree *tree, void *data, void *ctx)
     }
 
     if (node) {
-        return AVL_DATA(node, tree);
+        return (void*) AVL_DATA(node, tree);
+    }
+
+    return NULL;
+}
+
+
+void *
+avl_lookup_compare(avl_tree *tree, avl_compare_fn cmp, void *data, void *ctx)
+{
+    avl_node *node = tree->root;
+    int comp;
+
+    while ( node != NULL ) {
+        comp = cmp( AVL_DATA(node, tree), data, ctx );
+        if (comp == 0) break;
+        node = node->child[comp < 0];
+    }
+
+    if (node) {
+        return (void*)AVL_DATA(node, tree);
     }
 
     return NULL;

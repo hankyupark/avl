@@ -266,12 +266,16 @@ avl_data(avl_node *node);
  *          IN   Context used for compare operation during lookup
  * 
  *       Return: avl_node *
- *               Avl node matching the lookup if lookup succeeds; o/w NULL.  If
+ *               Avl node matching the lookup if lookup succeeds; o/w NULL. If
  *               the tree nodes are non-intrusive, then use avl_data() to get 
  *               the user data associated with the avl_node returned.
  */
-avl_node *
+void *
 avl_lookup(avl_tree *tree, void *data, void *ctx);
+
+
+void *
+avl_lookup_compare(avl_tree *tree, avl_compare_fn comp, void *data, void *ctx);
 
 
 /*
