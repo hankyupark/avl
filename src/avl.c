@@ -239,7 +239,7 @@ avl_lookup(avl_tree *tree, void *data, void *ctx)
         node = node->child[comp < 0];
     }
 
-    return node;
+    return AVL_DATA(node, tree);
 }
 
 
