@@ -234,7 +234,7 @@ avl_lookup(avl_tree *tree, void *data, void *ctx)
     int comp;
 
     while ( node != NULL ) {
-        comp = tree->comp( AVL_DATA(node, tree), AVL_NODE(data, tree), ctx );
+        comp = tree->comp( AVL_DATA(node, tree), data, ctx );
         if (comp == 0) break;
         node = node->child[comp < 0];
     }
